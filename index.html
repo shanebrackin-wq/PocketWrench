@@ -457,6 +457,16 @@ function clearPhoto() {
   if (w) w.remove();
 }
 
+const DEMO_RESPONSES = [
+  "Oh I know exactly what that is — but you gotta sign up first, Chief. Get in here and I'll walk you through it step by step. 👇",
+  "Ha — good one. I've seen that a hundred times. Sign up and I'll tell you exactly what's wrong and how to fix it yourself. 🔧",
+  "That's a classic. I could diagnose that in my sleep. Join up and we'll get it sorted — takes two minutes. 👇",
+  "Now we're talkin' — that's right in my wheelhouse. Sign up and I'll walk you through it like we're right there in the shop together. 🛠️",
+  "Oh yeah, I know that problem. Had three of those come through last week. Get signed up and Rex has got you covered. 👇",
+  "You came to the right place. That's a five-minute fix once you know what it is. Sign up and let's get after it. 🔩"
+];
+let demoIdx = 0;
+
 async function sendMsg() {
   const inp = document.getElementById('chat-input');
   const txt = inp.value.trim();
@@ -464,38 +474,19 @@ async function sendMsg() {
   inp.value = ''; inp.style.height = 'auto';
   document.getElementById('chips').style.display = 'none';
 
-  // Build user message content
-  let userContent;
-  const displayText = txt || '📸 [Photo attached]';
   if (pendingPhoto) {
-    userContent = [
-      {type:'image', source:{type:'base64', media_type:pendingPhoto.mediaType, data:pendingPhoto.base64}},
-      {type:'text', text: txt || 'What do you see in this photo? What does it tell you about the problem?'}
-    ];
     addMsgWithPhoto('user', txt || '', pendingPhoto.previewUrl);
     clearPhoto();
   } else {
-    userContent = txt;
     addMsg('user', txt);
   }
 
-  hist.push({role:'user', content:userContent});
   const t = addTyping();
-  try {
-    const r = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({system:SYS, messages:hist})
-    });
-    const d = await r.json();
-    t.remove();
-    const reply = d.content?.[0]?.text || "Hit a snag — try again.";
-    addMsg('bot', reply);
-    hist.push({role:'assistant', content:reply});
-  } catch(e) {
-    t.remove();
-    addMsg('bot', "Connection issue — check your signal and try again.");
-  }
+  await new Promise(r => setTimeout(r, 900 + Math.random() * 600));
+  t.remove();
+  const reply = DEMO_RESPONSES[demoIdx % DEMO_RESPONSES.length];
+  demoIdx++;
+  addMsg('bot', reply);
 }
 
 function sendQ(txt) {
