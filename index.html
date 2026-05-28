@@ -381,7 +381,7 @@ footer{padding:28px 32px;background:var(--bg);border-top:1px solid #111;display:
           <div class="plan-feat"><span class="ck">✓</span>Any machine, any problem</div>
           <div class="plan-feat" style="color:#ffd700;font-weight:800"><span class="ck">✓</span>📸 Share photos &amp; video during the call</div>
         </div>
-        <button class="plan-btn" onclick="document.getElementById('livecall').scrollIntoView({behavior:'smooth'})">Book a Call</button>
+        <button class="plan-btn" onclick="handleSignup('live-399')">Book a Call</button>
       </div>
 
     </div>
@@ -583,25 +583,17 @@ function getRef() {
 
 function handleSignup(plan) {
   const ref = getRef();
-  const msg = ref !== 'direct'
-    ? `Signup: ${plan} — referred by: ${ref}`
-    : `Signup: ${plan} — direct`;
-  
-  // Log it visibly so you can see it manually right now
-  console.log(msg);
-  
-  // Show a small confirmation so nothing feels broken
-  const banner = document.createElement('div');
-  banner.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#c9a227;color:#0a0a0a;font-family:Nunito,sans-serif;font-weight:800;font-size:13px;padding:12px 20px;border-radius:8px;z-index:9999;';
-  banner.textContent = ref !== 'direct'
-    ? `Starting ${plan} — referred by ${ref} ✓`
-    : `Starting ${plan}...`;
-  document.body.appendChild(banner);
-  setTimeout(() => banner.remove(), 3000);
-
-  // TODO: Replace alert below with your Stripe payment link when ready
-  // window.location.href = 'https://buy.stripe.com/your_link?client_reference_id=' + ref;
-  alert('Stripe payment link goes here.\n\nRef: ' + ref + '\nPlan: ' + plan);
+  const stripeLinks = {
+    'single-12.99': 'https://buy.stripe.com/28EeVdbhAbHZ3mebnh5os06',
+    'monthly-14.99': 'https://buy.stripe.com/4gM14n3P8h2jcWO62X5os07',
+    'live-399': 'https://buy.stripe.com/3cI00j1H04fxbSKbnh5os05'
+  };
+  const baseUrl = stripeLinks[plan];
+  if (!baseUrl) return;
+  const url = ref !== 'direct'
+    ? baseUrl + '?client_reference_id=' + encodeURIComponent(ref)
+    : baseUrl;
+  window.location.href = url;
 }
 </script>
 
