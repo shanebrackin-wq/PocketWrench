@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PocketWrench &mdash; No Worries</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;700;800;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--gold:#c9a227;--bg:#0a0a0a;--text:#e0e0e0;}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.08em;color:#fff;margin-bottom:40px;}
+.logo span{color:var(--gold);}
+.icon{font-size:60px;margin-bottom:24px;}
+h1{font-family:'Bebas Neue',sans-serif;font-size:54px;letter-spacing:.04em;color:#fff;margin-bottom:14px;}
+p{font-size:16px;color:#aaa;line-height:1.7;max-width:420px;margin-bottom:36px;}
+.redirect-note{font-size:12px;color:#555;font-weight:800;letter-spacing:.08em;text-transform:uppercase;}
+.bar{width:220px;height:3px;background:#1a1a1a;border-radius:2px;margin:14px auto 0;overflow:hidden;}
+.bar-fill{height:100%;background:#333;border-radius:2px;animation:fill 3s linear forwards;}
+@keyframes fill{from{width:0}to{width:100%}}
+</style>
+</head>
+<body>
+
+<div class="logo">Pocket<span>Wrench</span></div>
+<div class="icon">&#x1F44D;</div>
+<h1>No Worries.</h1>
+<p>Changed your mind &mdash; totally fine. Rex'll be here whenever you need him.</p>
+<div class="redirect-note">Taking you back...</div>
+<div class="bar"><div class="bar-fill"></div></div>
+
+<script>
+setTimeout(function() {
+  window.location.href = 'index.html';
+}, 3000);
+</script>
+
+</body>
+</html>
