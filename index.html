@@ -555,6 +555,10 @@ function submitCall() {
     msg.textContent = 'Please enter a valid email address.';
     return;
   }
+  // Send to your email via mailto
+  const subject = encodeURIComponent('PocketWrench Live Mechanic Call Request');
+  const body = encodeURIComponent('Customer email: ' + email + '\n\nThey are requesting a live mechanic call at $399/hour.');
+  window.location.href = 'mailto:lyman.motor.works@gmail.com?subject=' + subject + '&body=' + body;
   msg.style.color = 'var(--gold)';
   msg.textContent = "Request received. We'll be in touch if we have availability.";
   document.getElementById('lc-email').value = '';
