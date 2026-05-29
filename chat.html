@@ -247,11 +247,15 @@ function buildMemoryContext() {
 
 function updateMemory(text) {
   const mem = loadMemory();
+
+  // Name extraction
   const nameMatch = text.match(/(?:i'?m|my name is|call me|i go by)\s+([A-Z][a-z]+)/i);
   if (nameMatch && !mem.name) {
     mem.name = nameMatch[1];
     saveMemory(mem);
   }
+
+  // Vehicle extraction
   const vehicleMatch = text.match(/\b(19|20)\d{2}\b[^.]{3,40}/);
   if (vehicleMatch) {
     if (!mem.vehicles) mem.vehicles = [];
@@ -261,6 +265,47 @@ function updateMemory(text) {
       if (mem.vehicles.length > 5) mem.vehicles.shift();
       saveMemory(mem);
     }
+  }
+
+  // Track if they confirmed they got the app on home screen
+  const gotIt = /yes|yep|yeah|got it|done|added|installed|on my (home|screen)|i did|it's there|its there/i.test(text);
+  const needHelp = /no|didn't|cant|can't|how|don't know|doesn't work|confused|help/i.test(text);
+  if (mem.installTipShown && !mem.installConfirmed) {
+    if (gotIt) { mem.installConfirmed = true; saveMemory(mem); }
+    if (needHelp) { mem.installNeedsHelp = true; saveMemory(mem); }
+  }
+
+  // Track conversation count for follow-up timing
+  if (!mem.convCount) mem.convCount = 0;
+  mem.convCount++;
+  saveMemory(mem);
+}
+
+function shouldFollowUpOnInstall() {
+  const mem = loadMemory();
+  // Follow up on 3rd and 6th conversation if tip was shown but not confirmed
+  if (!mem.installTipShown) return false;
+  if (mem.installConfirmed) return false;
+  if (mem.installFollowUpCount >= 2) return false;
+  return mem.convCount === 3 || mem.convCount === 6;
+}
+
+function getInstallFollowUp() {
+  const mem = loadMemory();
+  const name = mem.name ? `, ${mem.name}` : '';
+  if (!mem.installFollowUpCount) mem.installFollowUpCount = 0;
+  mem.installFollowUpCount++;
+  saveMemory(mem);
+
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+
+  if (isIOS) {
+    return `Hey${name} — quick thing while I have you. Did you ever get PocketWrench on your home screen? Makes it way easier to find me at 10pm in the garage when something breaks. If not: tap the Share button (📤) at the bottom of Safari → Add to Home Screen → Add. Takes 5 seconds. 👍`;
+  } else if (isAndroid) {
+    return `Hey${name} — quick thing while I have you. Did you ever get PocketWrench on your home screen? Makes it way easier to find me when you need me. If not: tap the three dots (⋮) in Chrome → Add to Home Screen → Add. Takes 5 seconds. 👍`;
+  } else {
+    return `Hey${name} — quick thing. Did you ever save PocketWrench for easy access? On your phone: iPhone tap Share → Add to Home Screen, Android tap three dots → Add to Home Screen. On desktop just hit Ctrl+D (or Cmd+D on Mac) to bookmark it. Makes a big difference when you need me fast. 👍`;
   }
 }
 
@@ -286,6 +331,7 @@ Rules:
 - Adapt immediately if corrected — no defensiveness
 - Torque specs, socket sizes, part names when relevant
 - Never say "take it to a dealer" unless genuinely dangerous or requires specialty tools
+- If the user mentions they can't figure out how to add PocketWrench to their home screen, walk them through it clearly. iPhone: Safari Share button (📤) → Add to Home Screen → Add. Android: Chrome three dots → Add to Home Screen → Add. Desktop: Ctrl+D or Cmd+D. Be patient and encouraging.
 - Be encouraging — people are often frustrated when something's broken, a little warmth goes a long way`;
 }
 
@@ -359,6 +405,16 @@ async function sendMsg() {
     rexSpeak(reply);
     hist.push({role:'assistant', content:reply});
     saveConversation(hist);
+
+    // Follow up on home screen install naturally
+    if (shouldFollowUpOnInstall()) {
+      setTimeout(() => {
+        const followUp = getInstallFollowUp();
+        addMsg('bot', followUp);
+        hist.push({role:'assistant', content: followUp});
+        saveConversation(hist);
+      }, 2000);
+    }
   } catch(e) {
     t.remove();
     addMsg('bot', "Connection issue — check your signal and try again.");
