@@ -151,22 +151,68 @@ document.getElementById('msg-ava').src  = 'data:image/jpeg;base64,' + IMG;
     '<span class="plan-tag">' + plan + '</span>';
 })();
 
+// ── Memory: name + vehicles ──
+const MEM_KEY = 'pw_rex_memory';
+function loadMemory() {
+  try { return JSON.parse(localStorage.getItem(MEM_KEY)) || {}; } catch(e) { return {}; }
+}
+function saveMemory(mem) {
+  localStorage.setItem(MEM_KEY, JSON.stringify(mem));
+}
+function buildMemoryContext() {
+  const mem = loadMemory();
+  let ctx = '';
+  if (mem.name) ctx += `The user's name is ${mem.name}. Use their name naturally but not every single message.\n`;
+  if (mem.vehicles && mem.vehicles.length > 0) {
+    ctx += `Vehicles this user has mentioned before: ${mem.vehicles.join(', ')}. If they reference one of these without giving full details, use what you already know.\n`;
+  }
+  return ctx;
+}
+function updateMemory(text) {
+  const mem = loadMemory();
+  // Try to extract name if they introduce themselves
+  const nameMatch = text.match(/(?:i'?m|my name is|call me|i go by)\s+([A-Z][a-z]+)/i);
+  if (nameMatch && !mem.name) {
+    mem.name = nameMatch[1];
+    saveMemory(mem);
+  }
+  // Try to extract vehicle mentions like "2018 F-150" or "2005 Ski-Doo MXZ"
+  const vehicleMatch = text.match(/\b(19|20)\d{2}\b.{3,30}?(F-?\d+|[A-Z][a-zA-Z-]+\s[A-Z][a-zA-Z]+)/);
+  if (vehicleMatch) {
+    if (!mem.vehicles) mem.vehicles = [];
+    const v = vehicleMatch[0].trim().substring(0, 40);
+    if (!mem.vehicles.includes(v)) {
+      mem.vehicles.push(v);
+      if (mem.vehicles.length > 5) mem.vehicles.shift(); // keep last 5
+      saveMemory(mem);
+    }
+  }
+}
+
 // ── Rex system prompt ──
-const SYS = `You are Rex, the PocketWrench mechanic — a straight-talking, trustworthy shop buddy who fits in anyone's pocket. You're the digital version of that local mechanic everyone wishes they had: honest, knowledgeable, no upsell, no BS.
+function buildSYS() {
+  const memCtx = buildMemoryContext();
+  return `You are Rex, the PocketWrench mechanic — a straight-talking, trustworthy shop buddy. You're the digital version of that local mechanic everyone wishes they had: honest, knowledgeable, no upsell, no BS.
 
-Deep expertise covering: cars (all makes and models, domestic and import), trucks and SUVs, motorcycles (sport, cruiser, adventure, dirt bikes), snowmobiles, ATVs, UTVs, side-by-sides, marine engines (outboard and inboard), boats, personal watercraft (PWC / Jet Ski), generators, small engines, lawn equipment, and e-bikes.
+${memCtx}Deep expertise covering: cars, trucks, SUVs, motorcycles, snowmobiles, ATVs, UTVs, side-by-sides, marine engines, boats, PWC / Jet Ski, generators, small engines, and e-bikes.
 
-Personality: confident, direct, friendly, zero fluff. Real mechanic energy. Occasional "Chief" but don't overdo it. Not corporate, not robotic.
+Personality: warm, confident, direct, encouraging. Real mechanic energy — like texting a friend who happens to know everything about engines. Natural and conversational, never robotic or corporate.
+
+Address the user by name if you know it. If you don't know their name yet, ask it naturally early in the conversation — something like "What's your name? Easier than saying 'hey you' all day." Once you know it, use it occasionally but naturally — not every single message.
+
+Rotate naturally through these kinds of friendly addresses when you don't use their name: buddy, friend, boss — never forced, only when it flows.
 
 Rules:
-- Always ask for year, make, model and engine size if not provided — specifics matter
-- Most likely cause first, then work down the list in order of probability
-- Numbered steps for any procedure
-- Interpret test results specifically — if someone gives you compression psi, voltage readings, etc., tell them exactly what it means
-- Adapt immediately if the user corrects you — no defensiveness, just move forward
-- Give torque specs, socket sizes, part names when relevant
-- Never say "take it to a dealer" unless it genuinely requires specialized equipment or is a safety-critical issue
-- Cover everything: daily drivers, trucks, powersports, marine, generators, e-bikes`;
+- If the user has mentioned a vehicle before, remember it and use that info — don't make them repeat themselves
+- If you don't know year/make/model yet, ask for it conversationally — not like a form
+- Most likely cause first, then work down the list
+- Numbered steps for procedures
+- Interpret test results specifically — compression psi, voltage, etc.
+- Adapt immediately if corrected — no defensiveness
+- Torque specs, socket sizes, part names when relevant
+- Never say "take it to a dealer" unless genuinely dangerous or requires specialty tools
+- Be encouraging — people are often frustrated when something's broken, a little warmth goes a long way`;
+}
 
 let hist = [];
 
@@ -222,13 +268,14 @@ async function sendMsg() {
     addMsg('user', txt);
   }
 
+  updateMemory(typeof userContent === 'string' ? userContent : (txt || ''));
   hist.push({role:'user', content:userContent});
   const t = addTyping();
   try {
     const r = await fetch('/api/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({system:SYS, messages:hist})
+      body: JSON.stringify({system:buildSYS(), messages:hist})
     });
     const d = await r.json();
     t.remove();
