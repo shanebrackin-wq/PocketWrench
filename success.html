@@ -36,8 +36,8 @@ p{font-size:16px;color:#aaa;line-height:1.7;max-width:420px;margin-bottom:36px;}
   var plan      = params.get('plan');
   var sessionId = params.get('session_id');
 
-  // Require a session_id — Stripe always appends this on successful payment
-  if (!sessionId) {
+  // Accept either a session_id (paid) or just a plan param (free/$0 test)
+  if (!sessionId && !plan) {
     window.location.replace('index.html');
     return;
   }
