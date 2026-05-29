@@ -77,6 +77,9 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);disp
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
 .speak-toggle{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#444;background:none;border:none;cursor:pointer;padding:4px 8px;}
 .speak-toggle.on{color:var(--gold);}
+.copy-btn{background:none;border:none;cursor:pointer;font-size:11px;color:#444;padding:4px 6px;margin-top:4px;display:block;transition:color .15s;}
+.copy-btn:hover{color:var(--gold);}
+.msg-wrap{display:flex;flex-direction:column;max-width:calc(100% - 36px);}
 .photo-btn{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;width:42px;height:42px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:border-color .15s;}
 .photo-btn:hover{border-color:var(--gold);}
 @media(max-width:680px){
@@ -130,6 +133,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);disp
         <div>
           <div class="chat-brand">Pocket<span>Wrench</span></div>
           <div class="chat-status"><span class="chat-dot"></span>Rex is online &nbsp;<button class="speak-toggle" id="speak-toggle" onclick="toggleSpeak()" title="Rex speaks">🔊 Rex Speaks: OFF</button></div>
+          <button class="speak-toggle" onclick="clearChat()" style="margin-left:8px;">🔄 New Problem</button>
         </div>
         <div class="chat-cats">
           <span class="chat-cat">Cars &middot; Trucks</span>
@@ -369,15 +373,15 @@ function sendQ(txt) {
 function addMsg(role, text) {
   const el = document.getElementById('chat-msgs');
   const d = document.createElement('div');
-  d.className = `msg ${role}`;
+  d.className = 'msg ' + role;
   const f = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
   if (role === 'bot') {
-    d.innerHTML = `<div class="msg-ava"><img src="data:image/jpeg;base64,${IMG}" alt="Rex"/></div><div class="msg-bubble">${f}</div>`;
+    const cleanText = text.replace(/<[^>]+>/g,'').replace(/'/g,"'");
+    d.innerHTML = '<div class="msg-ava"><img src="data:image/jpeg;base64,' + IMG + '" alt="Rex"/></div><div class="msg-wrap"><div class="msg-bubble">' + f + '</div><button class="copy-btn" onclick="copyMsg(this, this.dataset.text)" data-text="' + cleanText.replace(/"/g,'&quot;') + '">📋 Copy</button></div>';
     el.appendChild(d);
-    // Scroll to the TOP of Rex's new message, not the bottom
     setTimeout(() => d.scrollIntoView({behavior:'smooth', block:'start'}), 50);
   } else {
-    d.innerHTML = `<div class="msg-bubble">${f}</div>`;
+    d.innerHTML = '<div class="msg-bubble">' + f + '</div>';
     el.appendChild(d);
     el.scrollTop = el.scrollHeight;
   }
@@ -413,7 +417,93 @@ function autoResize(el) {
   el.style.height = Math.min(el.scrollHeight, 90) + 'px';
 }
 
-// ── Voice Input (Speech to Text) ──
+// ── Welcome back / first time greeting ──
+(function() {
+  const mem = loadMemory();
+  const lastConv = loadLastConversation();
+  const el = document.getElementById('chat-msgs');
+  el.innerHTML = ''; // clear default
+
+  let greeting = '';
+  const now = new Date();
+  const hour = now.getHours();
+  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+
+  if (mem.name && lastConv) {
+    const when = timeSince(lastConv.date);
+    const daysSince = Math.floor((Date.now() - new Date(lastConv.date).getTime()) / 86400000);
+    if (daysSince < 1) {
+      greeting = `Welcome back, ${mem.name}! Good to see you again. What are we working on?`;
+    } else if (daysSince < 7) {
+      const vehicle = mem.vehicles && mem.vehicles.length > 0 ? ` — still working on that ${mem.vehicles[mem.vehicles.length-1]}?` : '';
+      greeting = `Hey ${mem.name}, good ${timeOfDay}! You were in here ${when}${vehicle} What can I help you with today?`;
+    } else {
+      greeting = `Hey ${mem.name}! Good ${timeOfDay} — it's been a while. What's giving you trouble today?`;
+    }
+  } else if (mem.name) {
+    greeting = `Good ${timeOfDay}, ${mem.name}! What are we working on today?`;
+  } else {
+    greeting = `Hey — I'm Rex. What's your name and what are we working on today?`;
+  }
+
+  // Add greeting message
+  const d = document.createElement('div');
+  d.className = 'msg bot';
+  d.innerHTML = `<div class="msg-ava"><img src="data:image/jpeg;base64,${IMG}" alt="Rex"/></div><div class="msg-wrap"><div class="msg-bubble">${greeting}</div></div>`;
+  el.appendChild(d);
+
+  // If first time, add home screen tip after a short delay
+  if (!mem.installTipShown) {
+    setTimeout(() => {
+      const tip = document.createElement('div');
+      tip.className = 'msg bot';
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isAndroid = /android/i.test(navigator.userAgent);
+      let installMsg = '';
+      if (isIOS) {
+        installMsg = `Quick tip — add PocketWrench to your home screen so it's always one tap away. Tap the Share button (📤) at the bottom of Safari, then "Add to Home Screen." Works like a real app, no app store needed. 🔧`;
+      } else if (isAndroid) {
+        installMsg = `Quick tip — add PocketWrench to your home screen so it's always one tap away. Tap the three dots (⋮) in Chrome, then "Add to Home Screen." Works like a real app, no app store needed. 🔧`;
+      } else {
+        installMsg = `Quick tip — bookmark this page or add it to your favorites so Rex is always one click away. On mobile you can add it to your home screen like a real app. 🔧`;
+      }
+      tip.innerHTML = `<div class="msg-ava"><img src="data:image/jpeg;base64,${IMG}" alt="Rex"/></div><div class="msg-wrap"><div class="msg-bubble">${installMsg}</div></div>`;
+      el.appendChild(tip);
+      el.scrollTop = el.scrollHeight;
+      // Mark as shown so it doesn't repeat
+      const m = loadMemory();
+      m.installTipShown = true;
+      saveMemory(m);
+    }, 1500);
+  }
+})();
+
+// ── Clear chat / new problem ──
+function clearChat() {
+  if (!confirm('Start a new problem? This will clear the current conversation.')) return;
+  // Save current before clearing
+  if (hist.length > 0) saveConversation(hist);
+  hist = [];
+  const el = document.getElementById('chat-msgs');
+  el.innerHTML = '';
+  const mem = loadMemory();
+  const name = mem.name ? `, ${mem.name}` : '';
+  const d = document.createElement('div');
+  d.className = 'msg bot';
+  d.innerHTML = `<div class="msg-ava"><img src="data:image/jpeg;base64,${IMG}" alt="Rex"/></div><div class="msg-wrap"><div class="msg-bubble">Ready for a new one${name}. What are we looking at?</div></div>`;
+  el.appendChild(d);
+  document.getElementById('chips').style.display = 'flex';
+}
+
+// ── Copy response ──
+function copyMsg(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied';
+    setTimeout(() => btn.textContent = '📋 Copy', 2000);
+  });
+}
+
+// ── Voice Input (Speech to Text) ──// ── Voice Input (Speech to Text) ──
 let recognition = null;
 let isListening = false;
 
