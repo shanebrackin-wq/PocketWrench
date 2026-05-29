@@ -461,11 +461,17 @@ function autoResize(el) {
       const isAndroid = /android/i.test(navigator.userAgent);
       let installMsg = '';
       if (isIOS) {
-        installMsg = `Quick tip — add PocketWrench to your home screen so it's always one tap away. Tap the Share button (📤) at the bottom of Safari, then "Add to Home Screen." Works like a real app, no app store needed. 🔧`;
+        installMsg = `One more thing — save PocketWrench to your home screen so Rex is one tap away, just like a real app:<br><br>
+📱 <strong>iPhone:</strong> Tap the Share button (📤) at the bottom of Safari → tap <em>Add to Home Screen</em> → tap <em>Add</em>. Done — Rex lives on your home screen. 🔧`;
       } else if (isAndroid) {
-        installMsg = `Quick tip — add PocketWrench to your home screen so it's always one tap away. Tap the three dots (⋮) in Chrome, then "Add to Home Screen." Works like a real app, no app store needed. 🔧`;
+        installMsg = `One more thing — save PocketWrench to your home screen so Rex is one tap away, just like a real app:<br><br>
+📱 <strong>Android:</strong> Tap the three dots (⋮) in Chrome → tap <em>Add to Home Screen</em> → tap <em>Add</em>. Done — Rex lives on your home screen. 🔧`;
       } else {
-        installMsg = `Quick tip — bookmark this page or add it to your favorites so Rex is always one click away. On mobile you can add it to your home screen like a real app. 🔧`;
+        installMsg = `One more thing — save PocketWrench so Rex is always easy to find:<br><br>
+📱 <strong>iPhone:</strong> Open in Safari → Share button (📤) → Add to Home Screen<br>
+📱 <strong>Android:</strong> Open in Chrome → three dots (⋮) → Add to Home Screen<br>
+💻 <strong>Desktop:</strong> Bookmark this page (Ctrl+D or Cmd+D)<br><br>
+Works like a real app — no app store needed. 🔧`;
       }
       tip.innerHTML = `<div class="msg-ava"><img src="data:image/jpeg;base64,${IMG}" alt="Rex"/></div><div class="msg-wrap"><div class="msg-bubble">${installMsg}</div></div>`;
       el.appendChild(tip);
