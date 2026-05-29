@@ -300,11 +300,14 @@ function addMsg(role, text) {
   const f = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
   if (role === 'bot') {
     d.innerHTML = `<div class="msg-ava"><img src="data:image/jpeg;base64,${IMG}" alt="Rex"/></div><div class="msg-bubble">${f}</div>`;
+    el.appendChild(d);
+    // Scroll to the TOP of Rex's new message, not the bottom
+    setTimeout(() => d.scrollIntoView({behavior:'smooth', block:'start'}), 50);
   } else {
     d.innerHTML = `<div class="msg-bubble">${f}</div>`;
+    el.appendChild(d);
+    el.scrollTop = el.scrollHeight;
   }
-  el.appendChild(d);
-  el.scrollTop = el.scrollHeight;
 }
 
 function addMsgWithPhoto(role, text, previewUrl) {
