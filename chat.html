@@ -178,39 +178,83 @@ document.getElementById('msg-ava').src  = 'data:image/jpeg;base64,' + IMG;
     '<span class="plan-tag">' + plan + '</span>';
 })();
 
-// ── Memory: name + vehicles ──
+// ── Persistent Memory System ──
 const MEM_KEY = 'pw_rex_memory';
+const CONV_KEY = 'pw_rex_last_conv';
+
 function loadMemory() {
   try { return JSON.parse(localStorage.getItem(MEM_KEY)) || {}; } catch(e) { return {}; }
 }
 function saveMemory(mem) {
   localStorage.setItem(MEM_KEY, JSON.stringify(mem));
 }
+
+function saveConversation(messages) {
+  const summary = {
+    date: new Date().toISOString(),
+    messages: messages.slice(-10) // save last 10 messages
+  };
+  localStorage.setItem(CONV_KEY, JSON.stringify(summary));
+}
+
+function loadLastConversation() {
+  try { return JSON.parse(localStorage.getItem(CONV_KEY)) || null; } catch(e) { return null; }
+}
+
+function timeSince(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hrs = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 60) return mins <= 1 ? 'just now' : `${mins} minutes ago`;
+  if (hrs < 24) return `${hrs} hour${hrs>1?'s':''} ago`;
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days} days ago`;
+  if (days < 14) return 'last week';
+  return `${days} days ago`;
+}
+
 function buildMemoryContext() {
   const mem = loadMemory();
+  const lastConv = loadLastConversation();
   let ctx = '';
+
   if (mem.name) ctx += `The user's name is ${mem.name}. Use their name naturally but not every single message.\n`;
   if (mem.vehicles && mem.vehicles.length > 0) {
-    ctx += `Vehicles this user has mentioned before: ${mem.vehicles.join(', ')}. If they reference one of these without giving full details, use what you already know.\n`;
+    ctx += `Vehicles this user has mentioned before: ${mem.vehicles.join(', ')}. If they reference one of these, use what you already know — don't ask for info they've already given.\n`;
   }
+
+  if (lastConv && lastConv.messages && lastConv.messages.length > 0) {
+    const when = timeSince(lastConv.date);
+    const isRecent = (Date.now() - new Date(lastConv.date).getTime()) < 86400000 * 7; // within 7 days
+
+    if (isRecent) {
+      ctx += `\nThe user's last conversation was ${when}. Here's what was discussed:\n`;
+      lastConv.messages.forEach(m => {
+        if (m.role === 'user') ctx += `User: ${typeof m.content === 'string' ? m.content : '[photo/media]'}\n`;
+        if (m.role === 'assistant') ctx += `Rex: ${m.content.substring(0, 200)}...\n`;
+      });
+      ctx += `\nIf this seems like they might be continuing the same problem, acknowledge it naturally — something like "Hey [name], picking back up on that [vehicle] issue?" Don't force it if the topic seems different.\n`;
+    }
+  }
+
   return ctx;
 }
+
 function updateMemory(text) {
   const mem = loadMemory();
-  // Try to extract name if they introduce themselves
   const nameMatch = text.match(/(?:i'?m|my name is|call me|i go by)\s+([A-Z][a-z]+)/i);
   if (nameMatch && !mem.name) {
     mem.name = nameMatch[1];
     saveMemory(mem);
   }
-  // Try to extract vehicle mentions like "2018 F-150" or "2005 Ski-Doo MXZ"
-  const vehicleMatch = text.match(/\b(19|20)\d{2}\b.{3,30}?(F-?\d+|[A-Z][a-zA-Z-]+\s[A-Z][a-zA-Z]+)/);
+  const vehicleMatch = text.match(/\b(19|20)\d{2}\b[^.]{3,40}/);
   if (vehicleMatch) {
     if (!mem.vehicles) mem.vehicles = [];
-    const v = vehicleMatch[0].trim().substring(0, 40);
-    if (!mem.vehicles.includes(v)) {
+    const v = vehicleMatch[0].trim().substring(0, 50);
+    if (!mem.vehicles.find(x => x.includes(v.substring(0,10)))) {
       mem.vehicles.push(v);
-      if (mem.vehicles.length > 5) mem.vehicles.shift(); // keep last 5
+      if (mem.vehicles.length > 5) mem.vehicles.shift();
       saveMemory(mem);
     }
   }
@@ -310,6 +354,7 @@ async function sendMsg() {
     addMsg('bot', reply);
     rexSpeak(reply);
     hist.push({role:'assistant', content:reply});
+    saveConversation(hist);
   } catch(e) {
     t.remove();
     addMsg('bot', "Connection issue — check your signal and try again.");
